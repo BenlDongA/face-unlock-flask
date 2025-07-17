@@ -14,7 +14,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 # Kết nối MongoDB (sử dụng biến môi trường nếu deploy trên Render)
-MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://admin:admin@faceapp.zhh4gzt.mongodb.net/")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://cuong123:cuong123@cluster0.htvcj.mongodb.net/")
 client = MongoClient(MONGO_URI)
 db = client["face_database"]
 collection = db["face_data"]
