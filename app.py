@@ -36,7 +36,7 @@ def home():
 def known_faces(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-@app.route("/upload", methods=["POST"])
+@app.route("/upload_image", methods=["POST"])
 def upload_image():
     name = request.form.get("name")
     if 'image' not in request.files or not name:
