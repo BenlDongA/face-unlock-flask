@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý người dùng - Face Unlock</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: #f4f6f9;
+      margin: 0; padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 40px;
+      font-size: 28px;
+    }
+    .container {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 40px;
+      max-width: 1200px;
+      margin: auto;
+    }
+    .card {
+      flex: 1;
+      min-width: 360px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .card h2 {
+      margin-bottom: 20px;
+      font-size: 20px;
+      color: #2c3e50;
+    }
+    .user-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 15px;
+    }
+    .user-card {
+      background: #fafafa;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .user-card img {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+    .delete-link {
+      display: block;
+      color: red;
+      text-decoration: none;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    .delete-link:hover { text-decoration: underline; }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+    }
+    input[type="text"], input[type="file"] {
+      width: 100%; padding: 8px;
+      margin-top: 5px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button, input[type="submit"] {
+      margin-top: 15px;
+      padding: 10px 20px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover, input[type="submit"]:hover {
+      background-color: #2980b9;
+    }
+    hr {
+      margin: 30px 0;
+      border: none;
+      border-top: 1px dashed #ccc;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.6);
+    }
+    .modal-content {
+      background-color: #fff;
+      margin: 5% auto;
+      padding: 20px;
+      border-radius: 10px;
+      width: 90%; max-width: 700px;
+      text-align: center;
+      position: relative;
+    }
+    .modal-content video, .modal-content img {
+      width: 100%; border-radius: 10px;
+    }
+    .modal-body {
+      display: flex;
+      gap: 20px;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .preview-box, .video-box {
+      flex: 1;
+      min-width: 240px;
+    }
+    .modal-buttons {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    .close {
+      position: absolute;
+      top: 10px; right: 15px;
+      color: #aaa;
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close:hover { color: #000; }
+  </style>
+</head>
+<body>
+
+<h1>🔐 Quản lý người dùng - Face Unlock</h1>
+
+<div class="container">
+  <div class="card">
+    <h2>👥 Người dùng</h2>
+    <div class="user-list">
+   {% for user in users %}
+  <div class="user-card">
+    <img src="{{ url_for('known_faces', filename=user['filename']) }}">
+    <div class="user-name" id="name-display-{{ loop.index }}">{{ user['name'] }}</div>
+
+    <!-- Nút Sửa -->
+   <button class="edit-btn" onclick='showRenameForm("{{ user["filename"] }}", {{ loop.index }})'>✏️ Sửa</button>
+
+
+
+    <!-- Form sửa tên -->
+    <form class="rename-form" method="post" action="{{ url_for('rename_user') }}" id="rename-form-{{ loop.index }}" style="display:none;">
+      <input type="hidden" name="old_name" value="{{ user['filename'] }}">
+      <input type="text" name="new_name" placeholder="Tên mới" required>
+      <button type="submit">💾 Lưu</button>
+    </form>
+
+    <!-- Nút xoá -->
+    <a class="delete-link" href="{{ url_for('delete_user', username=user['name']) }}">❌ Xoá</a>
+  </div>
+{% endfor %}
+
+
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📁 Thêm người từ ảnh</h2>
+   <form method="post" enctype="multipart/form-data" action="{{ url_for('upload') }}">
+  <label>Tên người dùng</label>
+  <input type="text" name="name" required>
+
+  <label>Chọn ảnh (JPG/PNG)</label>
+  <input type="file" name="file" accept="image/*" required onchange="previewFromPC(event)">
+
+  <!-- Khung nhỏ để xem trước -->
+  <div style="margin-top:10px;">
+    <img id="pcPreview" src="" style="display:none; width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #ccc;">
+  </div>
+
+  <input type="submit" value="📤 Tải lên">
+</form>
+
+</form>
+
+    <hr>
+
+    <h2>📸 Thêm bằng Webcam</h2>
+    <label>Tên người dùng</label>
+    <input type="text" id="webcamName" placeholder="Tên người dùng...">
+    <button type="button" onclick="startCamera()">▶️ Bắt đầu Webcam</button>
+  </div>
+</div>
+
+<!-- Modal Webcam -->
+<div id="webcamModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal()">&times;</span>
+    <div class="modal-body">
+      <div class="preview-box">
+        <h3>📷 Ảnh đã chụp</h3>
+        <img id="preview" src="" style="display:none;">
+      </div>
+      <div class="video-box">
+        <video id="video" autoplay></video>
+        <div class="modal-buttons">
+          <button onclick="capture()">📸 Chụp</button>
+          <button onclick="closeModal()">⛔ Đóng</button>
+        </div>
+        <button id="submitBtn" style="display:none; margin-top:10px;">💾 Gửi về server</button>
+      </div>
+    </div>
+    <canvas id="canvas" style="display:none;"></canvas>
+  </div>
+</div>
+
+<script>
+let video = document.getElementById("video");
+let canvas = document.getElementById("canvas");
+let preview = document.getElementById("preview");
+let submitBtn = document.getElementById("submitBtn");
+let context = canvas.getContext("2d");
+let modal = document.getElementById("webcamModal");
+let stream = null;
+
+function startCamera() {
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(s => {
+      stream = s;
+      video.srcObject = stream;
+      modal.style.display = "block";
+    })
+    .catch(err => alert("❌ Không thể mở webcam"));
+}
+
+function closeModal() {
+  modal.style.display = "none";
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+    stream = null;
+  }
+  preview.style.display = "none";
+  submitBtn.style.display = "none";
+}
+
+function capture() {
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  context.drawImage(video, 0, 0);
+  preview.src = canvas.toDataURL("image/jpeg");
+  preview.style.display = "block";
+  submitBtn.style.display = "inline-block";
+}
+
+submitBtn.onclick = function () {
+  const nameInput = document.getElementById('webcamName');
+  const name = nameInput?.value || prompt("Nhập tên người dùng:");
+  if (!name || preview.src === "") {
+    alert("⚠️ Vui lòng nhập tên và chụp ảnh");
+    return;
+  }
+  fetch("/upload_webcam", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: name, image: preview.src })
+  }).then(() => {
+    alert("✅ Ảnh đã gửi thành công!");
+    closeModal();
+    location.reload();
+  }).catch(() => alert("❌ Gửi thất bại"));
+};
+function previewFromPC(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = document.getElementById('pcPreview');
+    img.src = e.target.result;
+    img.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+  function showRenameForm(filename, index) {
+    const form = document.getElementById(`rename-form-${index}`);
+    if (form) {
+      form.style.display = form.style.display === "none" ? "block" : "none";
+    }
+  }
+</script>
+
+</body>
+</html>
