@@ -162,7 +162,7 @@
 
     <!-- Form sửa tên -->
     <form class="rename-form" method="post" action="{{ url_for('rename_user') }}" id="rename-form-{{ loop.index }}" style="display:none;">
-      <input type="hidden" name="old_name" value="{{ user['filename'] }}">
+      <input type="hidden" name="user_id" value="{{ user['_id'] | string }}">
       <input type="text" name="new_name" placeholder="Tên mới" required>
       <button type="submit">💾 Lưu</button>
     </form>
@@ -178,7 +178,7 @@
 
   <div class="card">
     <h2>📁 Thêm người từ ảnh</h2>
-   <form method="post" enctype="multipart/form-data" action="{{ url_for('upload_image') }}">
+    <form method="post" enctype="multipart/form-data" action="{{ url_for('upload') }}">
   <label>Tên người dùng</label>
   <input type="text" name="name" required>
 
