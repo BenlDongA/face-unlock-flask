@@ -1,0 +1,32 @@
+<script>
+function addUser() {
+  const name = document.getElementById("name").value;
+  const fileInput = document.getElementById("image");
+  const file = fileInput.files[0];
+
+  const reader = new FileReader();
+  reader.onload = async function () {
+    const base64Image = reader.result;
+
+    const response = await fetch("https://face-unlock-flask.onrender.com/api/upload_webcam", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ name: name, image: base64Image })
+    });
+
+    if (response.ok) {
+      alert("Thêm user thành công!");
+    } else {
+      const data = await response.json();
+      alert("Lỗi: " + data.error);
+    }
+  };
+  reader.readAsDataURL(file);
+}
+</script>
+
+<input type="text" id="name" placeholder="Nhập tên" />
+<input type="file" id="image" />
+<button onclick="addUser()">Thêm</button>

@@ -2,14 +2,14 @@ from flask import Flask, request, jsonify, render_template, redirect, url_for, s
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from pymongo import MongoClient
-from flask_cors import CORS
 import os
 import base64
 from bson.objectid import ObjectId
 
 app = Flask(__name__)
 
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+# CORS cho toàn bộ app
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
 UPLOAD_FOLDER = os.path.join(app.root_path, "known_faces")
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -54,8 +54,11 @@ def upload_image():
         return redirect(url_for('home'))
     return "File không hợp lệ", 400
 
-@app.route("/upload_webcam", methods=["POST"])
+@app.route("/upload_webcam", methods=["OPTIONS", "POST"])
 def upload_webcam():
+    if request.method == "OPTIONS":
+        return jsonify({"message": "CORS Preflight"}), 200
+
     data = request.get_json()
     name = data.get("name")
     image_base64 = data.get("image")
