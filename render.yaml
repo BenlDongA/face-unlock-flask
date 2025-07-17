@@ -1,9 +1,6 @@
 services:
   - type: web
-    name: face-unlock-api
+    name: flask-app
     env: python
     buildCommand: ""
     startCommand: gunicorn app:app
-    envVars:
-      - key: FLASK_ENV
-        value: production
