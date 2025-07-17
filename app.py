@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, render_template, redirect, url_for, send_from_directory
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from pymongo import MongoClient
 from flask_cors import CORS
@@ -7,7 +8,8 @@ import base64
 from bson.objectid import ObjectId
 
 app = Flask(__name__)
-CORS(app)
+
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 UPLOAD_FOLDER = os.path.join(app.root_path, "known_faces")
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
