@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Full API Face Upload</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    .user-card { border: 1px solid #ccc; padding: 10px; margin: 10px 0; display: flex; align-items: center; }
+    .user-card img { width: 100px; height: 100px; object-fit: cover; margin-right: 10px; }
+    .user-info { flex: 1; }
+    .user-actions button { margin: 5px; }
+    video, canvas { width: 100px; height: 75px; border: 1px solid #999; }
+  </style>
+</head>
+<body>
+  <h2>🧑‍💻 Test Full API Face Unlock</h2>
+
+  <h3>➕ Thêm người mới</h3>
+  <input type="file" id="imageInput"><br><br>
+  <input type="text" id="nameInput" placeholder="Tên người"><br><br>
+  <button onclick="upload()">📤 Upload từ file</button>
+  <button onclick="capture()">📸 Chụp từ webcam</button><br><br>
+
+  <video id="video" autoplay></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+
+  <h3>📋 Danh sách người dùng</h3>
+  <div id="userList"></div>
+
+  <script>
+    const API_URL = "https://face-unlock-flask.onrender.com";
+
+    // Load webcam
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => { video.srcObject = stream; })
+      .catch(err => console.error("Webcam error:", err));
+
+    // Upload từ file
+    function upload() {
+      const fileInput = document.getElementById("imageInput");
+      const name = document.getElementById("nameInput").value;
+
+      if (fileInput.files.length === 0 || name.trim() === "") {
+        alert("Vui lòng chọn ảnh và nhập tên!");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function () {
+        sendImage(reader.result, name);
+      };
+      reader.readAsDataURL(fileInput.files[0]);
+    }
+
+    // Chụp và gửi ảnh webcam
+    function capture() {
+      const name = document.getElementById("nameInput").value;
+      if (!name.trim()) return alert("Nhập tên trước khi chụp");
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+
+      const dataURL = canvas.toDataURL("image/jpeg");
+      sendImage(dataURL, name);
+    }
+
+    // Gửi ảnh (file hoặc webcam) tới API
+    function sendImage(imageBase64, name) {
+      fetch(`${API_URL}/upload_webcam`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), image: imageBase64 })
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message || "Upload thành công");
+        loadUsers();
+      })
+      .catch(err => alert("Lỗi: " + err));
+    }
+
+    // Tải danh sách người dùng
+    function loadUsers() {
+      fetch(`${API_URL}/api/users`)
+        .then(res => res.json())
+        .then(users => {
+          const list = document.getElementById("userList");
+          list.innerHTML = "";
+          users.forEach(user => {
+            const div = document.createElement("div");
+            div.className = "user-card";
+            div.innerHTML = `
+              <img src="${user.image_url}" alt="Ảnh">
+              <div class="user-info">
+                <b>${user.name}</b><br>
+                <input type="text" id="rename_${user._id}" placeholder="Tên mới">
+              </div>
+              <div class="user-actions">
+                <button onclick="deleteUser('${user._id}')">🗑️ Xóa</button>
+                <button onclick="renameUser('${user._id}')">✏️ Đổi tên</button>
+              </div>
+            `;
+            list.appendChild(div);
+          });
+        });
+    }
+
+    // Xóa user
+    function deleteUser(userId) {
+      if (!confirm("Bạn có chắc muốn xóa?")) return;
+      fetch(`${API_URL}/api/delete_user/${userId}`, {
+        method: "DELETE"
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message || "Đã xóa");
+        loadUsers();
+      });
+    }
+
+    // Đổi tên
+    function renameUser(userId) {
+      const newName = document.getElementById(`rename_${userId}`).value;
+      if (!newName.trim()) return alert("Nhập tên mới");
+
+      fetch(`${API_URL}/api/rename_user`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, new_name: newName.trim() })
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message || "Đã đổi tên");
+        loadUsers();
+      });
+    }
+
+    // Load lần đầu
+    loadUsers();
+  </script>
+</body>
+</html>

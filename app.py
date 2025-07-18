@@ -1,31 +1,17 @@
-from flask import Flask, request, jsonify, render_template, redirect, url_for, send_from_directory
+from flask import Flask, request, jsonify, render_template, redirect, url_for
 from flask_cors import CORS
-from werkzeug.utils import secure_filename
 from pymongo import MongoClient
-import os
 import base64
 from bson.objectid import ObjectId
 
 app = Flask(__name__)
-
-# CORS cho toàn bộ app
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
-UPLOAD_FOLDER = os.path.join(app.root_path, "known_faces")
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-
-# MongoDB URI
-MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://cuong123:cuong123@cluster0.htvcj.mongodb.net/")
+# MongoDB
+MONGO_URI = "mongodb+srv://cuong123:cuong123@cluster0.htvcj.mongodb.net/"
 client = MongoClient(MONGO_URI)
 db = client["face_database"]
 collection = db["face_data"]
-
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # --------------------- HTML WEB ROUTES ---------------------
 
@@ -34,27 +20,19 @@ def home():
     users = list(collection.find())
     return render_template("index.html", users=users)
 
-@app.route("/known_faces/<filename>")
-def known_faces(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
 @app.route("/upload_image", methods=["POST"])
 def upload_image():
     name = request.form.get("name")
-    if 'image' not in request.files or not name:
-        return "Thiếu ảnh hoặc tên!", 400
+    file = request.files.get("image")
 
-    file = request.files['image']
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(save_path)
+    if not name or not file:
+        return "Thiếu tên hoặc ảnh!", 400
 
-        collection.insert_one({"name": name, "filename": filename})
-        return redirect(url_for('home'))
-    return "File không hợp lệ", 400
+    image_data = base64.b64encode(file.read()).decode('utf-8')
+    collection.insert_one({"name": name, "image_base64": image_data})
+    return redirect(url_for("home"))
 
-@app.route("/upload_webcam", methods=["OPTIONS", "POST"])
+@app.route("/upload_webcam", methods=["POST", "OPTIONS"])
 def upload_webcam():
     if request.method == "OPTIONS":
         return jsonify({"message": "CORS Preflight"}), 200
@@ -66,23 +44,15 @@ def upload_webcam():
     if not name or not image_base64:
         return jsonify({"error": "Thiếu dữ liệu!"}), 400
 
-    image_data = base64.b64decode(image_base64.split(",")[1])
-    filename = f"{secure_filename(name)}.jpg"
-    path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
-    with open(path, "wb") as f:
-        f.write(image_data)
-
-    collection.insert_one({"name": name, "filename": filename})
+    # Loại bỏ header data:image/jpeg;base64,...
+    encoded = image_base64.split(",")[1]
+    collection.insert_one({"name": name, "image_base64": encoded})
     return jsonify({"message": "Tải ảnh thành công!"})
 
 @app.route("/delete/<username>")
 def delete_user(username):
     user = collection.find_one({"name": username})
     if user:
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], user['filename'])
-        if os.path.exists(filepath):
-            os.remove(filepath)
         collection.delete_one({"_id": user["_id"]})
     return redirect(url_for('home'))
 
@@ -95,39 +65,38 @@ def rename_user():
     collection.update_one({"_id": ObjectId(user_id)}, {"$set": {"name": new_name}})
     return redirect(url_for('home'))
 
-# --------------------- API ROUTES (cho Flutter hoặc JS) ---------------------
+# --------------------- API ROUTES ---------------------
 
 @app.route("/api/users", methods=["GET"])
 def api_get_users():
     users = list(collection.find())
-    result = [{"_id": str(user["_id"]), "name": user["name"], "image_url": url_for('known_faces', filename=user["filename"], _external=True)} for user in users]
+    result = []
+    for user in users:
+        result.append({
+            "_id": str(user["_id"]),
+            "name": user["name"],
+            "image_base64": f"data:image/jpeg;base64,{user['image_base64']}"
+        })
     return jsonify(result)
 
 @app.route("/api/upload", methods=["POST"])
 def api_upload_image():
-    if 'image' not in request.files or 'name' not in request.form:
+    file = request.files.get("image")
+    name = request.form.get("name")
+
+    if not file or not name:
         return jsonify({"error": "Thiếu dữ liệu!"}), 400
 
-    file = request.files['image']
-    name = request.form['name']
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(save_path)
-        collection.insert_one({"name": name, "filename": filename})
-        return jsonify({"message": "Upload thành công!"})
-    return jsonify({"error": "File không hợp lệ!"}), 400
+    encoded = base64.b64encode(file.read()).decode('utf-8')
+    collection.insert_one({"name": name, "image_base64": encoded})
+    return jsonify({"message": "Upload thành công!"})
 
 @app.route("/api/delete_user/<user_id>", methods=["DELETE"])
 def api_delete_user(user_id):
-    user = collection.find_one({"_id": ObjectId(user_id)})
-    if user:
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], user['filename'])
-        if os.path.exists(filepath):
-            os.remove(filepath)
-        collection.delete_one({"_id": ObjectId(user_id)})
-        return jsonify({"message": "Xóa thành công!"})
-    return jsonify({"error": "Không tìm thấy user!"}), 404
+    result = collection.delete_one({"_id": ObjectId(user_id)})
+    if result.deleted_count == 0:
+        return jsonify({"error": "Không tìm thấy user!"}), 404
+    return jsonify({"message": "Xóa thành công!"})
 
 @app.route("/api/rename_user", methods=["POST"])
 def api_rename_user():
@@ -140,6 +109,5 @@ def api_rename_user():
     return jsonify({"message": "Đổi tên thành công!"})
 
 # --------------------- RUN APP ---------------------
-
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)

@@ -151,25 +151,23 @@
     <h2>👥 Người dùng</h2>
     <div class="user-list">
    {% for user in users %}
-  <div class="user-card">
-    <img src="{{ url_for('known_faces', filename=user['filename']) }}">
-    <div class="user-name" id="name-display-{{ loop.index }}">{{ user['name'] }}</div>
+<div class="user-card">
+  <img src="data:image/jpeg;base64,{{ user['image_base64'] }}">
+  <div class="user-name" id="name-display-{{ loop.index }}">{{ user['name'] }}</div>
 
-    <!-- Nút Sửa -->
-   <button class="edit-btn" onclick='showRenameForm("{{ user["filename"] }}", {{ loop.index }})'>✏️ Sửa</button>
+  <!-- Nút Sửa -->
+  <button class="edit-btn" onclick='showRenameForm("{{ user["_id"] }}", {{ loop.index }})'>✏️ Sửa</button>
 
+  <!-- Form sửa tên -->
+  <form class="rename-form" method="post" action="{{ url_for('rename_user') }}" id="rename-form-{{ loop.index }}" style="display:none;">
+    <input type="hidden" name="user_id" value="{{ user['_id'] | string }}">
+    <input type="text" name="new_name" placeholder="Tên mới" required>
+    <button type="submit">💾 Lưu</button>
+  </form>
 
-
-    <!-- Form sửa tên -->
-    <form class="rename-form" method="post" action="{{ url_for('rename_user') }}" id="rename-form-{{ loop.index }}" style="display:none;">
-      <input type="hidden" name="user_id" value="{{ user['_id'] | string }}">
-      <input type="text" name="new_name" placeholder="Tên mới" required>
-      <button type="submit">💾 Lưu</button>
-    </form>
-
-    <!-- Nút xoá -->
-    <a class="delete-link" href="{{ url_for('delete_user', username=user['name']) }}">❌ Xoá</a>
-  </div>
+  <!-- Nút xoá -->
+  <a class="delete-link" href="{{ url_for('delete_user', username=user['name']) }}">❌ Xoá</a>
+</div>
 {% endfor %}
 
 
