@@ -69,7 +69,7 @@ def rename_user():
 
 @app.route("/api/users", methods=["GET"])
 def get_users():
-    users = list(users_collection.find())
+    users = list(collection.find())  # ✅ đúng tên biến
     user_list = []
 
     for user in users:
@@ -80,6 +80,7 @@ def get_users():
         })
 
     return jsonify(user_list)
+
 
 @app.route("/api/upload", methods=["POST"])
 def api_upload_image():
