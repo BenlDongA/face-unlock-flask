@@ -68,16 +68,18 @@ def rename_user():
 # --------------------- API ROUTES ---------------------
 
 @app.route("/api/users", methods=["GET"])
-def api_get_users():
-    users = list(collection.find())
-    result = []
+def get_users():
+    users = list(users_collection.find())
+    user_list = []
+
     for user in users:
-        result.append({
+        user_list.append({
             "_id": str(user["_id"]),
             "name": user["name"],
-            "image_base64": f"data:image/jpeg;base64,{user['image_base64']}"
+            "image_url": f"data:image/jpeg;base64,{user['image_base64']}"
         })
-    return jsonify(result)
+
+    return jsonify(user_list)
 
 @app.route("/api/upload", methods=["POST"])
 def api_upload_image():
